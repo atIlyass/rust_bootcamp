@@ -1,5 +1,5 @@
-use std::env;
 use std::collections::HashMap;
+use std::env;
 use std::io::{self, Read};
 use std::process;
 
@@ -13,7 +13,7 @@ struct Config {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    
+
     let mut config = Config {
         top: 10,
         min_length: 1,
@@ -50,9 +50,11 @@ fn main() {
                 config.ignore_case = true;
             }
             arg => {
-                if !arg.starts_with('-') {
-                    config.text = Some(arg.to_string());
+                if arg.starts_with('-') {
+                    eprintln!("Error: Unknown option {}", arg);
+                    process::exit(2);
                 }
+                config.text = Some(arg.to_string());
             }
         }
         i += 1;
@@ -62,13 +64,13 @@ fn main() {
         Some(t) => t,
         None => {
             let mut buffer = String::new();
-            if let Err(_) = io::stdin().read_to_string(&mut buffer) {
+            if io::stdin().read_to_string(&mut buffer).is_err() {
                 process::exit(1);
             }
             buffer
         }
     };
-    
+
     let text_to_process = if config.ignore_case {
         content.to_lowercase()
     } else {
@@ -76,7 +78,7 @@ fn main() {
     };
 
     let mut word_counts: HashMap<String, usize> = HashMap::new();
-    let words = text_to_process.split(|c: char| !c.is_alphanumeric());
+    let words = text_to_process.split(|c: char| !c.is_alphanumeric() && c != '\'' && c != '"');
 
     for word in words {
         if !word.is_empty() && word.len() >= config.min_length {
@@ -86,9 +88,7 @@ fn main() {
 
     let mut sorted_words: Vec<(&String, &usize)> = word_counts.iter().collect();
 
-    sorted_words.sort_by(|a, b| {
-        b.1.cmp(a.1).then_with(|| a.0.cmp(b.0))
-    });
+    sorted_words.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
 
     if config.top_specified {
         println!("Top {} words:", config.top);
@@ -119,15 +119,13 @@ fn print_help() {
 fn format_number(n: usize) -> String {
     let s = n.to_string();
     let mut result = String::new();
-    let mut count = 0;
-    
-    for c in s.chars().rev() {
+
+    for (count, c) in s.chars().rev().enumerate() {
         if count > 0 && count % 3 == 0 {
             result.push(',');
         }
         result.push(c);
-        count += 1;
     }
-    
+
     result.chars().rev().collect()
 }

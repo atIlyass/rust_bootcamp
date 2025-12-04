@@ -3,9 +3,9 @@ use std::collections::BinaryHeap;
 use std::env;
 use std::fs::File;
 use std::io::{self, Read, Write};
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::thread;
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 struct Lcg {
     state: u64,
@@ -23,12 +23,17 @@ impl Lcg {
     }
 
     fn next(&mut self) -> u32 {
-        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (self.state >> 32) as u32
     }
 
     fn range(&mut self, min: u32, max: u32) -> u32 {
-        if min >= max { return min; }
+        if min >= max {
+            return min;
+        }
         min + (self.next() % (max - min))
     }
 }
@@ -82,7 +87,9 @@ struct State {
 
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.cmp(&self.cost)
+        other
+            .cost
+            .cmp(&self.cost)
             .then_with(|| self.x.cmp(&other.x))
             .then_with(|| self.y.cmp(&other.y))
     }
@@ -94,21 +101,20 @@ impl PartialOrd for State {
     }
 }
 
-
 fn print_help() {
     println!("Usage: hexpath [OPTIONS]");
-    println!("");
+    println!();
     println!("Find min/max cost paths in hexadecimal grid");
-    println!("");
+    println!();
     println!("Arguments:");
     println!("Map file (hex values, space separated)");
-    println!("");
+    println!();
     println!("Map format:");
     println!("- Each cell: 00-FF (hexadecimal)");
     println!("- Start: top-left (must be 00)");
     println!("- End: bottom-right (must be FF)");
     println!("- Moves: up, down, left, right");
-    println!("");
+    println!();
     println!("Options:");
     println!("--generate Generate random map (e.g., 8x4, 10x10)");
     println!("--output Save generated map to file");
@@ -145,9 +151,11 @@ fn parse_args() -> Config {
             "--both" => config.both = true,
             "--animate" => config.animate = true,
             arg => {
-                if !arg.starts_with("-") {
-                    config.map_file = Some(arg.to_string());
+                if arg.starts_with('-') {
+                    eprintln!("Error: Unknown option {}", arg);
+                    std::process::exit(2);
                 }
+                config.map_file = Some(arg.to_string());
             }
         }
         i += 1;
@@ -193,12 +201,16 @@ fn save_map(grid: &Grid, filename: &str) -> io::Result<()> {
 fn load_map(filename: &str) -> Result<Grid, String> {
     let mut file = File::open(filename).map_err(|e| format!("Failed to open file: {}", e))?;
     let mut content = String::new();
-    file.read_to_string(&mut content).map_err(|e| format!("Failed to read file: {}", e))?;
+    file.read_to_string(&mut content)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
 
     let mut cells = Vec::new();
     for line in content.lines() {
-        if line.trim().is_empty() { continue; }
-        let row: Result<Vec<u8>, _> = line.split_whitespace()
+        if line.trim().is_empty() {
+            continue;
+        }
+        let row: Result<Vec<u8>, _> = line
+            .split_whitespace()
             .map(|s| u8::from_str_radix(s, 16))
             .collect();
         match row {
@@ -220,7 +232,11 @@ fn load_map(filename: &str) -> Result<Grid, String> {
         }
     }
 
-    Ok(Grid { width, height, cells })
+    Ok(Grid {
+        width,
+        height,
+        cells,
+    })
 }
 
 fn get_ansi_color(val: u8) -> String {
@@ -243,26 +259,26 @@ fn get_ansi_color(val: u8) -> String {
 
 fn print_grid(grid: &Grid, path: Option<&Vec<(usize, usize)>>, is_max: bool) {
     let reset = "\x1b[0m";
-    
-    if let Some(_) = path {
+
+    if path.is_some() {
         if is_max {
             println!("MAXIMUM COST PATH (shown in RED):");
         } else {
             println!("MINIMUM COST PATH (shown in WHITE):");
         }
         println!("=====================================");
-        println!("");
+        println!();
     } else {
         println!("HEXADECIMAL GRID (rainbow gradient):");
         println!("============================================================================");
-        println!("");
+        println!();
     }
 
     for y in 0..grid.height {
         for x in 0..grid.width {
             let val = grid.cells[y][x];
             let color = get_ansi_color(val);
-            
+
             let mut is_in_path = false;
             if let Some(p) = path {
                 if p.contains(&(x, y)) {
@@ -280,73 +296,86 @@ fn print_grid(grid: &Grid, path: Option<&Vec<(usize, usize)>>, is_max: bool) {
                 print!("{}{:02X}{} ", color, val, reset);
             }
         }
-        println!("");
+        println!();
     }
-    println!("");
+    println!();
 }
 
-fn solve_dijkstra(grid: &Grid, maximize: bool, animate: bool) -> Option<(u32, Vec<(usize, usize)>)> {
+fn solve_dijkstra(
+    grid: &Grid,
+    maximize: bool,
+    animate: bool,
+) -> Option<(u32, Vec<(usize, usize)>)> {
     let mut dist = vec![vec![u32::MAX; grid.width]; grid.height];
     let mut parent = vec![vec![None; grid.width]; grid.height];
     let mut heap = BinaryHeap::new();
 
     dist[0][0] = 0;
-    
-    heap.push(State { cost: 0, x: 0, y: 0 });
+
+    heap.push(State {
+        cost: 0,
+        x: 0,
+        y: 0,
+    });
 
     let mut step_count = 0;
 
     if animate {
-        println!("Searching for {} cost path...", if maximize { "maximum" } else { "minimum" });
-        println!("");
+        println!(
+            "Searching for {} cost path...",
+            if maximize { "maximum" } else { "minimum" }
+        );
+        println!();
     }
 
     while let Some(State { cost, x, y }) = heap.pop() {
-        
         if animate {
             step_count += 1;
             if step_count <= 2 || (x == grid.width - 1 && y == grid.height - 1) {
-                 println!("Step {}: Exploring ({},{}) - cost: {}", step_count, x, y, cost);
-                 for ay in 0..grid.height {
-                     for ax in 0..grid.width {
-                         if ax == x && ay == y {
-                             print!("[*]");
-                         } else if dist[ay][ax] != u32::MAX {
-                             print!("[✓]");
-                         } else {
-                             print!("[ ]");
-                         }
-                     }
-                     println!("");
-                 }
-                 println!("");
-                 if step_count <= 2 {
-                     println!("[Animation continues...]");
-                     println!("");
-                 }
-                 thread::sleep(Duration::from_millis(100));
+                println!(
+                    "Step {}: Exploring ({},{}) - cost: {}",
+                    step_count, x, y, cost
+                );
+                for (ay, row) in dist.iter().enumerate() {
+                    for (ax, &d) in row.iter().enumerate() {
+                        if ax == x && ay == y {
+                            print!("[*]");
+                        } else if d != u32::MAX {
+                            print!("[✓]");
+                        } else {
+                            print!("[ ]");
+                        }
+                    }
+                    println!();
+                }
+                println!();
+                if step_count <= 2 {
+                    println!("[Animation continues...]");
+                    println!();
+                }
+                thread::sleep(Duration::from_millis(100));
             }
         }
 
         if x == grid.width - 1 && y == grid.height - 1 {
             // Found target
             if animate {
-                 println!("Step {}: Path found!", step_count);
-                 for ay in 0..grid.height {
-                     for ax in 0..grid.width {
-                         if ax == x && ay == y {
-                             print!("[✓]"); // Target reached
-                         } else if dist[ay][ax] != u32::MAX {
-                             print!("[✓]");
-                         } else {
-                             print!("[ ]");
-                         }
-                     }
-                     println!("");
-                 }
-                 println!("");
+                println!("Step {}: Path found!", step_count);
+                for (ay, row) in dist.iter().enumerate() {
+                    for (ax, &d) in row.iter().enumerate() {
+                        if ax == x && ay == y {
+                            print!("[✓]"); // Target reached
+                        } else if d != u32::MAX {
+                            print!("[✓]");
+                        } else {
+                            print!("[ ]");
+                        }
+                    }
+                    println!();
+                }
+                println!();
             }
-            
+
             let mut path = Vec::new();
             let mut curr = (x, y);
             path.push(curr);
@@ -355,13 +384,13 @@ fn solve_dijkstra(grid: &Grid, maximize: bool, animate: bool) -> Option<(u32, Ve
                 curr = p;
             }
             path.reverse();
-            
+
             let mut true_cost = 0;
-            
+
             for (px, py) in &path {
                 true_cost += grid.cells[*py][*px] as u32;
             }
-            
+
             return Some((true_cost, path));
         }
 
@@ -381,18 +410,18 @@ fn solve_dijkstra(grid: &Grid, maximize: bool, animate: bool) -> Option<(u32, Ve
                 let ny = ny as usize;
 
                 let cell_val = grid.cells[ny][nx] as u32;
-                let move_cost = if maximize {
-                    255 - cell_val
-                } else {
-                    cell_val
-                };
+                let move_cost = if maximize { 255 - cell_val } else { cell_val };
 
                 let new_cost = cost + move_cost;
 
                 if new_cost < dist[ny][nx] {
                     dist[ny][nx] = new_cost;
                     parent[ny][nx] = Some((x, y));
-                    heap.push(State { cost: new_cost, x: nx, y: ny });
+                    heap.push(State {
+                        cost: new_cost,
+                        x: nx,
+                        y: ny,
+                    });
                 }
             }
         }
@@ -401,7 +430,7 @@ fn solve_dijkstra(grid: &Grid, maximize: bool, animate: bool) -> Option<(u32, Ve
     None
 }
 
-fn print_path_details(grid: &Grid, cost: u32, path: &Vec<(usize, usize)>, is_max: bool) {
+fn print_path_details(grid: &Grid, cost: u32, path: &[(usize, usize)], is_max: bool) {
     if is_max {
         println!("MAXIMUM COST PATH:");
     } else {
@@ -410,29 +439,28 @@ fn print_path_details(grid: &Grid, cost: u32, path: &Vec<(usize, usize)>, is_max
     println!("=====================");
     println!("Total cost: 0x{:X} ({} decimal)", cost, cost);
     println!("Path length: {} steps", path.len());
-    
+
     println!("Path:");
     let path_str: Vec<String> = path.iter().map(|(x, y)| format!("({},{})", x, y)).collect();
     println!("{}", path_str.join("->"));
-    println!("");
+    println!();
 
     println!("Step-by-step costs:");
-    
+
     if let Some(first) = path.first() {
         let val = grid.cells[first.1][first.0];
         println!("Start 0x{:02X} ({},{})", val, first.0, first.1);
     }
-    
+
     let mut current_accumulated = 0;
-    
-    for i in 1..path.len() {
-        let (x, y) = path[i];
-        let val = grid.cells[y][x];
+
+    for (x, y) in path.iter().skip(1) {
+        let val = grid.cells[*y][*x];
         current_accumulated += val as u32;
         println!("→ 0x{:02X} ({},{}) +{}", val, x, y, current_accumulated);
     }
     println!("Total: 0x{:X} ({})", cost, cost);
-    println!("");
+    println!();
 }
 
 fn main() {
@@ -452,16 +480,17 @@ fn main() {
                         return;
                     }
                 }
-                
-                println!("");
+
+                println!();
                 if config.output.is_none() {
-                     println!("Generated map:");
-                     for y in 0..g.height {
-                        let line: Vec<String> = g.cells[y].iter().map(|c| format!("{:02X}", c)).collect();
+                    println!("Generated map:");
+                    for y in 0..g.height {
+                        let line: Vec<String> =
+                            g.cells[y].iter().map(|c| format!("{:02X}", c)).collect();
                         println!("{}", line.join(" "));
                     }
-                    println!("");
-                }      
+                    println!();
+                }
                 g
             }
             Err(e) => {
@@ -481,9 +510,10 @@ fn main() {
         print_help();
         return;
     };
-    
-    let should_solve = config.map_file.is_some() || config.visualize || config.both || config.animate;
-    
+
+    let should_solve =
+        config.map_file.is_some() || config.visualize || config.both || config.animate;
+
     if !should_solve {
         return;
     }
@@ -492,15 +522,19 @@ fn main() {
         println!("Analyzing hexadecimal grid...");
         println!("Grid size: {}x{}", grid.width, grid.height);
         println!("Start: (0,0) = 0x{:02X}", grid.cells[0][0]);
-        println!("End: ({},{}) = 0x{:02X}", grid.width - 1, grid.height - 1, grid.cells[grid.height - 1][grid.width - 1]);
-        println!("");
+        println!(
+            "End: ({},{}) = 0x{:02X}",
+            grid.width - 1,
+            grid.height - 1,
+            grid.cells[grid.height - 1][grid.width - 1]
+        );
+        println!();
     } else {
         println!("Finding optimal paths...");
-        println!("");
+        println!();
     }
-
     let min_res = solve_dijkstra(&grid, false, config.animate);
-    
+
     let max_res = if config.both {
         solve_dijkstra(&grid, true, false)
     } else {
@@ -509,25 +543,23 @@ fn main() {
 
     if config.visualize {
         if config.both {
-             if let Some((_, ref path)) = min_res {
-                 print_grid(&grid, Some(path), false);
-             }
-             
-             if let Some((_, ref path)) = max_res {
-                 print_grid(&grid, Some(path), true);
-             }
+            if let Some((_, ref path)) = min_res {
+                print_grid(&grid, Some(path), false);
+            }
+
+            if let Some((_, ref path)) = max_res {
+                print_grid(&grid, Some(path), true);
+            }
+        } else if let Some((_, ref path)) = min_res {
+            print_grid(&grid, Some(path), false);
         } else {
-             if let Some((_, ref path)) = min_res {
-                 print_grid(&grid, Some(path), false);
-             } else {
-                 print_grid(&grid, None, false);
-             }
+            print_grid(&grid, None, false);
         }
     } else {
         if let Some((cost, ref path)) = min_res {
             print_path_details(&grid, cost, path, false);
         }
-        
+
         if let Some((cost, ref path)) = max_res {
             print_path_details(&grid, cost, path, true);
         }

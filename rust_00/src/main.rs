@@ -25,6 +25,9 @@ fn main() {
                 eprintln!("Error: --repeat requires a value");
                 return;
             }
+        } else if arg.starts_with('-') {
+            eprintln!("Error: Unknown option {}", arg);
+            std::process::exit(2);
         } else {
             name = arg.clone();
         }

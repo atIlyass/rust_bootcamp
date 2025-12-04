@@ -70,7 +70,7 @@ fn main() {
             }
             _ => {
                 eprintln!("Error: Unknown argument {}", arg);
-                process::exit(1);
+                process::exit(2);
             }
         }
         i += 1;
@@ -92,9 +92,9 @@ fn main() {
 
 fn print_help() {
     println!("Usage: hextool [OPTIONS]");
-    println!("");
+    println!();
     println!("Read and write binary files in hexadecimal");
-    println!("");
+    println!();
     println!("Options:");
     println!("-f, --file Target file");
     println!("-r, --read Read mode (display hex)");
@@ -105,8 +105,8 @@ fn print_help() {
 }
 
 fn parse_offset(s: &str) -> u64 {
-    if s.starts_with("0x") {
-        u64::from_str_radix(&s[2..], 16).expect("Invalid hex offset")
+    if let Some(stripped) = s.strip_prefix("0x") {
+        u64::from_str_radix(stripped, 16).expect("Invalid hex offset")
     } else {
         s.parse().expect("Invalid decimal offset")
     }
@@ -114,19 +114,21 @@ fn parse_offset(s: &str) -> u64 {
 
 fn do_read(path: &str, offset: u64, size: u64, size_set: bool) {
     let mut file = File::open(path).expect("Failed to open file");
-    
+
     file.seek(SeekFrom::Start(offset)).expect("Failed to seek");
 
     let mut buffer = Vec::new();
     if size_set {
         let mut handle = file.take(size);
-        handle.read_to_end(&mut buffer).expect("Failed to read file");
+        handle
+            .read_to_end(&mut buffer)
+            .expect("Failed to read file");
     } else {
         file.read_to_end(&mut buffer).expect("Failed to read file");
     }
 
     let mut current_offset = offset;
-    
+
     for chunk in buffer.chunks(16) {
         print!("{:08x}: ", current_offset);
 
@@ -160,7 +162,7 @@ fn do_write(path: &str, offset: u64, hex_string: &str) {
 
     for i in (0..hex_string.len()).step_by(2) {
         if i + 2 <= hex_string.len() {
-            let byte_str = &hex_string[i..i+2];
+            let byte_str = &hex_string[i..i + 2];
             let byte = u8::from_str_radix(byte_str, 16).expect("Invalid hex string");
             bytes.push(byte);
         }
@@ -170,15 +172,15 @@ fn do_write(path: &str, offset: u64, hex_string: &str) {
         .read(true)
         .write(true)
         .create(true)
+        .truncate(false)
         .open(path)
         .expect("Failed to open file");
 
     file.seek(SeekFrom::Start(offset)).expect("Failed to seek");
 
     file.write_all(&bytes).expect("Failed to write");
-
     println!("Writing {} bytes at offset 0x{:08x}", bytes.len(), offset);
-    
+
     print!("Hex: ");
     for (i, b) in bytes.iter().enumerate() {
         print!("{:02x}", b);
@@ -186,7 +188,7 @@ fn do_write(path: &str, offset: u64, hex_string: &str) {
             print!(" ");
         }
     }
-    println!("");
+    println!();
 
     print!("ASCII: ");
     for b in &bytes {
@@ -196,7 +198,6 @@ fn do_write(path: &str, offset: u64, hex_string: &str) {
             print!(".");
         }
     }
-    println!("");
-
-    println!("✓ Successfully written");
+    println!();
+    println!();
 }
