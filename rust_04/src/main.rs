@@ -152,7 +152,7 @@ fn parse_args() -> Config {
             "--animate" => config.animate = true,
             arg => {
                 if arg.starts_with('-') {
-                    eprintln!("Error: Unknown option {}", arg);
+                    eprintln!("error: Unknown option {}", arg);
                     std::process::exit(2);
                 }
                 config.map_file = Some(arg.to_string());

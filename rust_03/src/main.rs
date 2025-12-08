@@ -109,6 +109,10 @@ fn main() {
     }
 
     match args[1].as_str() {
+        "-h" | "--help" => {
+            print_help();
+            return;
+        }
         "server" => {
             if args.len() != 3 {
                 print_help();
@@ -121,12 +125,12 @@ fn main() {
             if args.len() != 3 {
                 print_help();
                 return;
-            }
-            let addr = &args[2];
-            client(addr);
-        }
         _ => {
-            eprintln!("Error: Invalid command");
+            eprintln!("error: Invalid command");
+            std::process::exit(2);
+        }
+    }
+}           eprintln!("Error: Invalid command");
             std::process::exit(2);
         }
     }

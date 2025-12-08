@@ -51,7 +51,7 @@ fn main() {
             }
             arg => {
                 if arg.starts_with('-') {
-                    eprintln!("Error: Unknown option {}", arg);
+                    eprintln!("error: Unknown option {}", arg);
                     process::exit(2);
                 }
                 config.text = Some(arg.to_string());

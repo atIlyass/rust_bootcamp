@@ -26,7 +26,7 @@ fn main() {
                 return;
             }
         } else if arg.starts_with('-') {
-            eprintln!("Error: Unknown option {}", arg);
+            eprintln!("error: Unknown option {}", arg);
             std::process::exit(2);
         } else {
             name = arg.clone();
