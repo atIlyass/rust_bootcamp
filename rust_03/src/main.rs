@@ -125,12 +125,12 @@ fn main() {
             if args.len() != 3 {
                 print_help();
                 return;
+            }
+            let addr = &args[2];
+            client(addr);
+        }
         _ => {
             eprintln!("error: Invalid command");
-            std::process::exit(2);
-        }
-    }
-}           eprintln!("Error: Invalid command");
             std::process::exit(2);
         }
     }

@@ -179,7 +179,11 @@ fn do_write(path: &str, offset: u64, hex_string: &str) {
     file.seek(SeekFrom::Start(offset)).expect("Failed to seek");
 
     file.write_all(&bytes).expect("Failed to write");
-    println!("Successfully written {} bytes at offset 0x{:08x}", bytes.len(), offset);
+    println!(
+        "Successfully written {} bytes at offset 0x{:08x}",
+        bytes.len(),
+        offset
+    );
 
     print!("Hex: ");
     for (i, b) in bytes.iter().enumerate() {
