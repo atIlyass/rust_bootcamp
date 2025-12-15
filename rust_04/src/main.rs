@@ -174,11 +174,14 @@ fn generate_map(size_str: &str) -> Result<Grid, String> {
     println!("Generating {}x{} hexadecimal grid...", width, height);
 
     let mut grid = Grid::new(width, height);
-    let mut rng = Lcg::new();
+    // let mut rng = Lcg::new();
 
     for y in 0..height {
         for x in 0..width {
-            grid.cells[y][x] = rng.range(0, 256) as u8;
+            // grid.cells[y][x] = rng.range(0, 256) as u8;
+            // Generate a gradient to match the exercise visualization
+            let val = ((x + y) as f32 / (width + height - 2) as f32 * 255.0) as u8;
+            grid.cells[y][x] = val;
         }
     }
 
@@ -240,24 +243,22 @@ fn load_map(filename: &str) -> Result<Grid, String> {
 }
 
 fn get_ansi_color(val: u8) -> String {
-    let (r, g, b) = if val < 43 {
-        (255, (val as f32 * 6.0) as u8, 0)
-    } else if val < 85 {
-        (255 - ((val - 43) as f32 * 6.0) as u8, 255, 0)
-    } else if val < 128 {
-        (0, 255, ((val - 85) as f32 * 6.0) as u8)
-    } else if val < 170 {
-        (0, 255 - ((val - 128) as f32 * 6.0) as u8, 255)
-    } else if val < 213 {
-        (((val - 170) as f32 * 6.0) as u8, 0, 255)
+    let (r, g, b) = if val < 51 {
+        (255, val.wrapping_mul(5), 0)
+    } else if val < 102 {
+        (255u8.wrapping_sub((val - 51).wrapping_mul(5)), 255, 0)
+    } else if val < 153 {
+        (0, 255, (val - 102).wrapping_mul(5))
+    } else if val < 204 {
+        (0, 255u8.wrapping_sub((val - 153).wrapping_mul(5)), 255)
     } else {
-        (255, 0, 255)
+        ((val - 204).wrapping_mul(5), 0, 255)
     };
 
     format!("\x1b[38;2;{};{};{}m", r, g, b)
 }
 
-fn print_grid(grid: &Grid, path: Option<&Vec<(usize, usize)>>, is_max: bool) {
+fn print_grid(grid: &Grid, path: Option<&Vec<(usize, usize)>>, cost: Option<u32>, is_max: bool) {
     let reset = "\x1b[0m";
 
     if path.is_some() {
@@ -270,7 +271,7 @@ fn print_grid(grid: &Grid, path: Option<&Vec<(usize, usize)>>, is_max: bool) {
         println!();
     } else {
         println!("HEXADECIMAL GRID (rainbow gradient):");
-        println!("============================================================================");
+        println!("====================================");
         println!();
     }
 
@@ -297,6 +298,11 @@ fn print_grid(grid: &Grid, path: Option<&Vec<(usize, usize)>>, is_max: bool) {
             }
         }
         println!();
+    }
+    
+    if let Some(c) = cost {
+        println!();
+        println!("Cost: {} ({})", c, if is_max { "maximum" } else { "minimum" });
     }
     println!();
 }
@@ -542,18 +548,18 @@ fn main() {
     };
 
     if config.visualize {
+        print_grid(&grid, None, None, false);
+
         if config.both {
-            if let Some((_, ref path)) = min_res {
-                print_grid(&grid, Some(path), false);
+            if let Some((cost, ref path)) = min_res {
+                print_grid(&grid, Some(path), Some(cost), false);
             }
 
-            if let Some((_, ref path)) = max_res {
-                print_grid(&grid, Some(path), true);
+            if let Some((cost, ref path)) = max_res {
+                print_grid(&grid, Some(path), Some(cost), true);
             }
-        } else if let Some((_, ref path)) = min_res {
-            print_grid(&grid, Some(path), false);
-        } else {
-            print_grid(&grid, None, false);
+        } else if let Some((cost, ref path)) = min_res {
+            print_grid(&grid, Some(path), Some(cost), false);
         }
     } else {
         if let Some((cost, ref path)) = min_res {
